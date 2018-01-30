@@ -5,9 +5,13 @@ return {
 		red_alpha = c4(255, 50, 50, 140)
 	},
 	layer = { -- 값이 클수록 위쪽 레이어
-		frame = 0.6, 
-		towers = 0.5, 
+		towerFrame = 0.2, 
+		tower = 0.5, 
 		bullet = 0.4, 
-		range = 0.3
+		range = 0.3, 
+		mob = 0.25
+	}, 
+	config = {
+		rotate = 1
 	}
 }

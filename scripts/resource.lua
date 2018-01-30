@@ -6,5 +6,9 @@ return {
 	range = {
 		width = 300, 
 		height = 300
+	}, 
+	TowerFrame = {
+		width = 800, 
+		height = 800
 	}
 }

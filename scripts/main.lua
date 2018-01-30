@@ -9,25 +9,17 @@ function main:init()
 
 	magun.screenWidth = 1920
 	magun.screenHeight = 1080
-	magun.title = 'ROTATING NEOGUL NEOGUL'
+	magun.title = 'CYCLE TOWER DEFENSE'
 
 	magun.rendering.backgroundColor = c4(177, 217, 59, 255)
-	magun.log('neogulman loaded!')
+	magun.log('CTD! CTD!')
 
 	self.towers = {[0] = 0}
 	
 
 	self.mobs = {[0] = 0}
 
-	--self.mobs[0] = {pos = vec2(magun.mouse.x, magun.mouse.y)}
-	--self.mobs[1] = {pos = vec2(magun.mouse.x + 100, magun.mouse.y)}
-	--self.mobs[2] = {pos = vec2(magun.mouse.x + 200, magun.mouse.y)}
-
 	self.bullets ={[0] = 0}
-
-	--[[self.bullets.render = magun.rendering.loadTexture('Resources/Bullet_normal.png')
-	self.bullets.x = magun.screenWidth / 2
-	self.bullets.y = magun.screenHeight / 2]]
 
 	self.towerFrame = {[0] = {}}
 	self.towerFrame[0].render = magun.rendering.loadTexture('Resources/TowerFrame.png')
@@ -43,6 +35,7 @@ function main:init()
 	local newMob
 	for i = 0, (arrayLength(waveInfo) - 1) do
 		newMob = {}
+		newMob.mobIndex = i
 		newMob.HP = waveInfo[i].HP
 		newMob.speed = waveInfo[i].speed
 		newMob.start = waveInfo[i].start
@@ -60,6 +53,8 @@ function main:init()
 
 		newMob.exist = false
 
+		newMob.texture = waveInfo[i].texture
+
 		insertElement(self.mobs, tableCopy(newMob))
 	end
 
@@ -76,9 +71,6 @@ function main:init()
 
 	self.camera.x = magun.screenWidth / 2
 	self.camera.y = magun.screenHeight / 2
-
-	--a = {[0] = 10, {[0] = 0, 2, 3}, 30, 40, 50, 60}
-	--magun.log(getIndex(a, {[0] = 0, 2, 3}))
 
 	self.life = {render = magun.rendering.loadTexture('Resources/life.png'), size = vec2(200, 200)}
 
@@ -251,7 +243,7 @@ function main:renderTower()
 	end
 end
 
---타워 생성 후 tower 테이블에 넣음
+--towerType을 받아 타워 생성 후 tower 테이블에 넣음 towerPos는 vec2, frameInfo = {frame = , slot = } 의 형태
 function main:addTower(newTowerType, towerPos, frameInfo)
 	local newTower = {towerType = newTowerType, pos = towerPos, frame = frameInfo.frame, slot = frameInfo.slot, level = '1', angle = 0, coolDown = 0}
 	if newTowerType == 'SingleTarget' then
@@ -287,7 +279,7 @@ end
 
 --update에서 tower frame의 동작 실행
 function main:towerFrameManager()
-	local rotateVel = math.pi / 90
+	local rotateVel = math.pi / 180 * constant.rotateVelocity --회전속도
 	if magun.keyboard.press.a then
 		self.towerFrame[0].angle = self.towerFrame[0].angle + rotateVel * constant.config.rotate
 	elseif magun.keyboard.press.d then
@@ -323,7 +315,7 @@ function main:waveManager()
 		local mobAryLength = arrayLength(self.mobs)
 		for i = 0, (mobAryLength - 1) do
 			if self.mobs[i].time == self.wave[0].time then
-				self.mobs[i].render = magun.rendering.loadTexture('Resources/mob.png')
+				self.mobs[i].render = magun.rendering.loadTexture(self.mobs[i].texture)
 				self.mobs[i].size = vec2(self.mobs[i].render.width, self.mobs[i].render.height)
 				self.mobs[i].exist = true
 			end
@@ -379,7 +371,7 @@ function main:bulletManager()
 		unitDistance = vec2((target.pos.x - self.bullets[i].pos.x) / distance, (target.pos.y - self.bullets[i].pos.y) / distance)
 		self.bullets[i].pos = vec2(self.bullets[i].pos.x + unitDistance.x * self.bullets[i].vel, self.bullets[i].pos.y + unitDistance.y * self.bullets[i].vel)
 		if distance < self.bullets[i].vel then
-			self:bulletDamage(self.bullets[i], i, self.bullets[i].towerIndex)
+			self:bulletDamage(self.bullets[i], i)
 		end
 	end
 end
@@ -404,7 +396,7 @@ function main:addBullet(newBulletType, towerIndex, newTarget)
 		newBullet.pos.x = newBullet.pos.x + 60 * math.cos(self.towers[towerIndex].angle)
 		newBullet.pos.y = newBullet.pos.y + 60 * math.sin(self.towers[towerIndex].angle)
 
-		newBullet.vel = 1000 / 60
+		newBullet.vel = 1000 / 60 -- bullet이 1초당 가는 거리
 		newBullet.target = newTarget
 		newBullet.damage = self.towers[towerIndex].damage
 
@@ -415,20 +407,22 @@ function main:addBullet(newBulletType, towerIndex, newTarget)
 	insertElement(self.bullets, newBullet)
 end
 
-function main:bulletDamage(newBullet, bulletIndex, towerIndex)
-	local target = newBullet.target
+--탄이 몹에 맞았을때의 대미지 처리, 맞춘 newBullet과 bullet 테이블에서의 newBullet의 index를 인자로 넣음
+function main:bulletDamage(newBullet, bulletIndex)
+	--local target = newBullet.target
 	newBullet.target.HP = newBullet.target.HP - self.bullets[bulletIndex].damage
+	magun.log('HP: ' .. newBullet.target.HP)
 	if newBullet.target.HP < 0 then
-		local index = getIndex(self.mobs, self.towers[newBullet.towerIndex].attackTarget)
-		magun.log(index)
-		self.towers[newBullet.towerIndex].attackTarget.exist = false
-		self.towers[newBullet.towerIndex].attackTarget.render:dispose()
-		--magun.log(getIndex(self.mobs, self.towers[newBullet.towerIndex].attackTarget))
+		local index = getMobIndex(self.mobs, newBullet.target.mobIndex)
+		magun.log('index: ' .. index)
+		self.mobs[index].render:dispose()
+		self.mobs[index].exist = false
+
 		removeElement(self.mobs, index)
 		self.towers[newBullet.towerIndex].attackTarget = nil
 	end
-	removeElement(self.bullets, bulletIndex)
 	newBullet.render:dispose()
+	removeElement(self.bullets, bulletIndex)
 end
 
 --render에서 bullet들의 렌더링
@@ -551,6 +545,7 @@ end
 --0부터 시작하는 배열처럼 관리한 table에서 element의 index 반환
 function getIndex(aryTable, element)
 	local aryLength = arrayLength(aryTable)
+	--magun.log(aryLength)
 	for i = 0, (aryLength - 1) do
 		if type(aryTable[i]) == 'table' then
 			if compareTable(aryTable[i], element) == true then
@@ -565,7 +560,16 @@ function getIndex(aryTable, element)
 	return -1
 end
 
-
+--self.mobs 테이블에서 mobIndex로부터 table의 index 반환
+function getMobIndex(mobTable, mobIndex)
+	local aryLength = arrayLength(mobTable)
+	for i = 0, (aryLength - 1) do
+		if mobTable[i].mobIndex == mobIndex then
+			return i
+		end
+	end
+	return -1
+end
 
 
 

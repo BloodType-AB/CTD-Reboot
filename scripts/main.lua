@@ -252,6 +252,7 @@ function main:addTower(newTowerType, towerPos, frameInfo)
 		newTower.maxCoolDown = 60
 
 		newTower.attackTarget = nil
+		newTower.targetNum = 1
 		newTower.damage = 3
 
 		newTower.range = 200
